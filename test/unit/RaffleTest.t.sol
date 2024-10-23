@@ -57,7 +57,6 @@ contract RaffleTest is Test {
     }
     function testDontAllowPlayersToEnterWhenRaffleIsClosed() public{
         vm.prank(PLAYER);
-
         raffle.enterRaffle{value: entranceFee}();
         vm.warp(block.timestamp + interval + 1);
         vm.roll(block.number + 1);

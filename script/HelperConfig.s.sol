@@ -2,6 +2,8 @@
 pragma solidity ^0.8.19;
 import {Script, console} from "forge-std/Script.sol";
 import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import {LinkToken} from "test/mocks/LinkToken.sol";
+
 abstract contract CodeConstant {
     uint96 constant MOCK_BASE_FEE = 0.25 ether;
     uint96 constant MOCK_GAS_PRICE_LINK = 1e9;
@@ -17,6 +19,7 @@ contract HelperConfig is Script, CodeConstant {
         uint256 subscriptionId;
         uint32 callbackGasLimit;
         address vrfCoordinator;
+        address link;
     }
 
     NetworkConfig public localNetworkConfig;
@@ -24,6 +27,7 @@ contract HelperConfig is Script, CodeConstant {
 
     constructor() {
         networkConfig[LOCAL_CHAIN_ID] = getLocalConfig();
+        networkConfig[11155111] = getSepoliaConfig();
     }
 
     function getConfigByChainId(
@@ -36,7 +40,6 @@ contract HelperConfig is Script, CodeConstant {
         }
     }
     function getConfig() public view returns (NetworkConfig memory) {
-        console.log("chainId- ", block.chainid);
         return getConfigByChainId(block.chainid);
     }
     function getSepoliaConfig() public pure returns (NetworkConfig memory) {
@@ -47,7 +50,8 @@ contract HelperConfig is Script, CodeConstant {
                 vrfCoordinator: 0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B, // Sepolia VRFCoordinator address
                 gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae, // Sepolia gas lane
                 callbackGasLimit: 500000,
-                subscriptionId: 0
+                subscriptionId: 67843221325713822689471330362980771966711048390911295595034728189877009767945,
+                link: 0x779877A7B0D9E8603169DdbD7836e478b4624789
             });
     }
     function getLocalConfig() public returns (NetworkConfig memory) {
@@ -59,6 +63,7 @@ contract HelperConfig is Script, CodeConstant {
                 MOCK_BASE_FEE,
                 MOCK_GAS_PRICE_LINK
             );
+            LinkToken linktoken = new LinkToken();
             vm.stopBroadcast();
             localNetworkConfig = NetworkConfig({
                 entranceFee: 0.001 ether,
@@ -66,7 +71,8 @@ contract HelperConfig is Script, CodeConstant {
                 vrfCoordinator: address(vrfCoordinator),
                 gasLane: 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae,
                 callbackGasLimit: 500000,
-                subscriptionId: 0
+                subscriptionId: 0,
+                link: address(linktoken)
             });
             return localNetworkConfig;
         }
