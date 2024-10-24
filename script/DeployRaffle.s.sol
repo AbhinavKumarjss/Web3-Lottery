@@ -12,7 +12,7 @@ contract DeployRaffle is Script {
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
         if(config.subscriptionId == 0){
             CreateSubscription createSubscription = new CreateSubscription();
-            (config.subscriptionId,config.vrfCoordinator) = createSubscription.createSubscription(config.vrfCoordinator);
+            (config.subscriptionId,) = createSubscription.createSubscription(config.vrfCoordinator);
             FundSubscription fundSubscription = new FundSubscription();
             fundSubscription.fundSubscription(config.subscriptionId,config.vrfCoordinator,config.link);
             

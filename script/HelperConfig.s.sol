@@ -1,12 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 import {Script, console} from "forge-std/Script.sol";
-import {VRFCoordinatorV2Mock} from "@chainlink/contracts/src/v0.8/mocks/VRFCoordinatorV2Mock.sol";
+import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import {LinkToken} from "test/mocks/LinkToken.sol";
 
 abstract contract CodeConstant {
     uint96 constant MOCK_BASE_FEE = 0.25 ether;
     uint96 constant MOCK_GAS_PRICE_LINK = 1e9;
+    int256 constant MOCK_WEI_PER_UNIT_LINK = 1e18;
     uint256 constant LOCAL_CHAIN_ID = 31337;
 }
 
@@ -59,9 +60,10 @@ contract HelperConfig is Script, CodeConstant {
             return networkConfig[LOCAL_CHAIN_ID];
         } else {
             vm.startBroadcast();
-            VRFCoordinatorV2Mock vrfCoordinator = new VRFCoordinatorV2Mock(
+            VRFCoordinatorV2_5Mock vrfCoordinator = new VRFCoordinatorV2_5Mock(
                 MOCK_BASE_FEE,
-                MOCK_GAS_PRICE_LINK
+                MOCK_GAS_PRICE_LINK,
+                MOCK_WEI_PER_UNIT_LINK
             );
             LinkToken linktoken = new LinkToken();
             vm.stopBroadcast();
