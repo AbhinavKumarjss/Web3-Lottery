@@ -1,5 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
+
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
@@ -10,11 +11,14 @@ import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/V
  * @dev Implements Chainlink VRFv2.5
  */
 contract Raffle is VRFConsumerBaseV2Plus {
-    /**Custom Errors */
+    /**
+     * Custom Errors
+     */
     error Raffle__NotEnoughEthToEnterRaffle();
     error Raffle__TransferFailed();
     error Raffle__RaffleNotOver();
-    error Raffle__UpKeepNotNeeded(uint256 balance,uint256 players,uint256 state);
+    error Raffle__UpKeepNotNeeded(uint256 balance, uint256 players, uint256 state);
+
     enum RaffleState {
         OPEN,
         CLOSED
@@ -32,8 +36,11 @@ contract Raffle is VRFConsumerBaseV2Plus {
     address private s_recentWinner;
     RaffleState private s_raffleState;
     /*Events */
+
     event RaffleEntered(address indexed player);
     event WinnerPicked(address indexed winner);
+    event RequestedRaffleWinner(uint256 indexed requestId);
+
     constructor(
         uint256 entranceFee,
         uint256 interval,
@@ -51,14 +58,19 @@ contract Raffle is VRFConsumerBaseV2Plus {
         s_raffleState = RaffleState.OPEN;
     }
 
-    function checkUpkeep(bytes memory /*checkData*/) public view returns(bool upKeepNeeded, bytes memory /*PerformData*/) {
+    function checkUpkeep(bytes memory /*checkData*/ )
+        public
+        view
+        returns (bool upKeepNeeded, bytes memory /*PerformData*/ )
+    {
         bool timeHasPassed = (block.timestamp - s_lastTimeStamp) >= i_interval;
-       bool isOpen = s_raffleState == RaffleState.OPEN;
-       bool hasBalance = address(this).balance > 0;
-       bool hasPlayers = s_players.length > 0;
-       upKeepNeeded = (timeHasPassed && isOpen && hasBalance && hasPlayers);
+        bool isOpen = s_raffleState == RaffleState.OPEN;
+        bool hasBalance = address(this).balance > 0;
+        bool hasPlayers = s_players.length > 0;
+        upKeepNeeded = (timeHasPassed && isOpen && hasBalance && hasPlayers);
         return (upKeepNeeded, "");
     }
+
     function enterRaffle() external payable {
         if (msg.value < i_entranceFee) {
             revert Raffle__NotEnoughEthToEnterRaffle();
@@ -70,33 +82,28 @@ contract Raffle is VRFConsumerBaseV2Plus {
         emit RaffleEntered(msg.sender);
     }
 
-    
-    function performUpkeep(bytes calldata /* performData */) external {
-       (bool upKeepNeeded,) = checkUpkeep("");
-       if(!upKeepNeeded){
-        revert Raffle__UpKeepNotNeeded(address(this).balance,s_players.length,uint256(s_raffleState));
-       }
+    function performUpkeep(bytes calldata /* performData */ ) external {
+        (bool upKeepNeeded,) = checkUpkeep("");
+        if (!upKeepNeeded) {
+            revert Raffle__UpKeepNotNeeded(address(this).balance, s_players.length, uint256(s_raffleState));
+        }
         s_raffleState = RaffleState.CLOSED;
-        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient
-            .RandomWordsRequest({
-                keyHash: i_keyHash,
-                subId: i_subscriptionId,
-                requestConfirmations: REQUESTCONFIRMATIONS,
-                callbackGasLimit: i_callbackGasLimit,
-                numWords: NUMWORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
-                )
-            });
-   s_vrfCoordinator.requestRandomWords(request);
+        VRFV2PlusClient.RandomWordsRequest memory request = VRFV2PlusClient.RandomWordsRequest({
+            keyHash: i_keyHash,
+            subId: i_subscriptionId,
+            requestConfirmations: REQUESTCONFIRMATIONS,
+            callbackGasLimit: i_callbackGasLimit,
+            numWords: NUMWORDS,
+            extraArgs: VRFV2PlusClient._argsToBytes(
+                // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
+                VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+            )
+        });
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(request);
+        emit RequestedRaffleWinner(requestId);
     }
 
-
-    function fulfillRandomWords(
-        uint256 /*requestId*/,
-        uint256[] calldata randomWords
-    ) internal override {
+    function fulfillRandomWords(uint256, /*requestId*/ uint256[] calldata randomWords) internal override {
         uint256 indexOfWinner = randomWords[0] % s_players.length;
         address payable recentWinner = s_players[indexOfWinner];
         s_recentWinner = recentWinner;
@@ -105,26 +112,34 @@ contract Raffle is VRFConsumerBaseV2Plus {
         s_lastTimeStamp = block.timestamp;
 
         emit WinnerPicked(recentWinner);
-        (bool success, ) = recentWinner.call{value: address(this).balance}("");
+        (bool success,) = recentWinner.call{value: address(this).balance}("");
         if (!success) {
             revert Raffle__TransferFailed();
         }
     }
 
     /**
-Getter Functions
- */
+     * Getter Functions
+     */
     function getEntranceFee() public view returns (uint256) {
         return i_entranceFee;
     }
-    function getRaffleState() public view returns (RaffleState){
+
+    function getRaffleState() public view returns (RaffleState) {
         return s_raffleState;
     }
-    function getPlayer(uint256 IndexOfPLayer) public view returns(address){
+
+    function getPlayer(uint256 IndexOfPLayer) public view returns (address) {
         return s_players[IndexOfPLayer];
     }
+
     function setRaffleState(RaffleState state) public {
         s_raffleState = state;
-    }   
-    
+    }
+    function getLastTimeStamp() public view returns (uint256) {
+        return s_lastTimeStamp;
+    }
+    function getRecentWinner() public view returns (address) {
+        return s_recentWinner;
+    }
 }
